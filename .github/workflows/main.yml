@@ -1,0 +1,51 @@
+name: Chorcha Quiz Bot Automation
+
+on:
+  
+  workflow_dispatch:
+    # Allows you to trigger this workflow manually from GitHub Actions tab
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install Playwright Browsers
+      run: |
+        python -m playwright install chromium --with-deps
+
+    - name: Create auth.json from Secret
+      env:
+        AUTH_JSON_SECRET: ${{ secrets.CHORCHA_AUTH_JSON }}
+      run: |
+        python -c "import os; open('auth.json', 'w', encoding='utf-8').write(os.environ.get('AUTH_JSON_SECRET', ''))"
+
+    - name: Run Playwright Quiz Bot
+      env:
+        HEADLESS: "true"
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        python bot.py
+
+    - name: Upload Diagnostic Screenshots on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: diagnostic-screenshots
+        path: mode_error_attempt_*.png
+        if-no-files-found: ignore
